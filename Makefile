@@ -1,6 +1,7 @@
 ifeq ($(PREFIX),)
     PREFIX := /usr/local
 endif
+
 DEPS=
 OBJ=ddcmp.o
 
@@ -11,8 +12,8 @@ ddcmp: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 install: ddcmp
-	install -d $(DESTDIR)$(PREFIX)/lib/
-	install -m 644 ddcmp $(DESTDIR)$(PREFIX)/lib/
+	install -d $(DESTDIR)$(PREFIX)/bin/
+	install -m 755 ddcmp $(DESTDIR)$(PREFIX)/bin/
 
 clean:
 	rm -f ddcmp $(OBJ)
