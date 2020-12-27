@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
         int ret;
 
         /* Argument processing */
-        bufsize = 512;
+        bufsize = 64 * 1024;
         fnameout = NULL;
 
         static struct option long_options[] = {
