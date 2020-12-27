@@ -48,6 +48,93 @@ static void print_help(char *argv[])
         exit(1);
 }
 
+static int get_proc_cpu_count(void)
+{
+        int ret = -1;
+        int fd = 0;
+        off_t filesize = 0;
+        char *buf = NULL;
+        char *l = NULL;
+
+        fd = open("/proc/cpuinfo", O_RDONLY);
+        if (fd < 0)
+                goto out;
+        buf = malloc(1024);
+        if (!buf)
+                goto out;
+        for (;;) {
+                int i = read(fd, &buf[filesize], 1024);
+                if (i <= 0)
+                        break;
+                filesize += i;
+                buf = realloc(buf, filesize + 1024);
+                if (!buf)
+                        goto out;
+        };
+        l = buf;
+        ret = 0;
+        for (;;) {
+                l = strstr(l, "processor");
+                if (!l)
+                        break;
+                l+=9;
+                ret ++;
+        }
+out:
+        if (fd > 0)
+                close(fd);
+        if (buf)
+                free (buf);
+        return ret;
+}
+
+static int get_proc_cache_size(void)
+{
+        int ret = -1;
+        int fd = 0;
+        off_t filesize = 0;
+        char *buf = NULL;
+        char *l = NULL;
+        char unit[64];
+
+        fd = open("/proc/cpuinfo", O_RDONLY);
+        if (fd < 0)
+                goto out;
+        buf = malloc(1024);
+        if (!buf)
+                goto out;
+        for (;;) {
+                int i = read(fd, &buf[filesize], 1024);
+                if (i <= 0)
+                        break;
+                filesize += i;
+                buf = realloc(buf, filesize + 1024);
+                if (!buf)
+                        goto out;
+        };
+        l = strstr(buf, "cache size");
+        if (!l)
+                goto out;
+        l = strstr(l, ":");
+        if (!l)
+                goto out;
+        l+=2;        /* ':', ' ' */
+
+        sscanf (l, "%d %s\n", &ret, &unit);
+
+        if (unit != NULL && strcmp(unit, "KB") == 0) {
+                ret *= 1024;
+        } else if (unit != NULL && strcmp(unit, "MB") == 0) {
+                ret *= 1024 * 1024;
+        }
+out:
+        if (fd > 0)
+                close(fd);
+        if (buf)
+                free (buf);
+        return ret;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -66,7 +153,16 @@ int main(int argc, char *argv[])
         int ret;
 
         /* Argument processing */
-        bufsize = 64 * 1024;
+        bufsize = 0x10000;
+        /* Get L3 cache per CPU core and divide by two to find optimal buffer size */
+        if (get_proc_cache_size() > 4096) {
+                int cpus = get_proc_cpu_count();
+                if (cpus <= 0)
+                        cpus = 1;
+
+                bufsize = get_proc_cache_size() / (cpus * 2);
+                bufsize = ((bufsize + 0x10000 - 1) / 0x10000) * 0x10000;
+        }
         fnameout = NULL;
 
         static struct option long_options[] = {
