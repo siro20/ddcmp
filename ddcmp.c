@@ -104,10 +104,15 @@ int main(int argc, char *argv[])
                 print_help(argv);
         }
 
-        if (! ((bufin = malloc(bufsize)) && (bufout = malloc(bufsize)))) {
+        if (posix_memalign((void **)&bufin, 4 * 1024 * 1024, bufsize)) {
                 fprintf(stderr,"Error: Can't allocate buffers: %i\n", bufsize);
                 exit(1);
         }
+        if (posix_memalign((void **)&bufout, 4 * 1024 * 1024, bufsize)) {
+                fprintf(stderr,"Error: Can't allocate buffers: %i\n", bufsize);
+                exit(1);
+        }
+
         fdin = dup(STDIN_FILENO);
         if (fdin < 0) {
                 fprintf(stderr,"Error: Can't open stdin\n");
