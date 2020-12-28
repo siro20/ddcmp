@@ -10,6 +10,7 @@ No error checking, no intensive tests run - use at your own risk!
 */
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -148,7 +149,9 @@ int main(int argc, char *argv[])
         int dirty;                      /* Dirty blocks # */
         int opt;                        /* getopt return value */
         int option_index;               /* getopt return value */
-
+        struct timeval tv_start;        /* Start timestamp */
+        struct timeval tv_end;          /* End timestamp */
+        long long timediff;             /* Difference between timestamps */
         int bufsize_read;               /* Read ofsset in block */
         int ret;
 
@@ -226,6 +229,8 @@ int main(int argc, char *argv[])
                 exit(1);
         }
 
+        gettimeofday(&tv_start, NULL);
+
         cnt = 0;
         dirty = 0;
         while (1) {
@@ -261,7 +266,14 @@ int main(int argc, char *argv[])
                 }
                 cnt++;
         }
+        gettimeofday(&tv_end, NULL);
+
         printf("Scanned %d blocks with size 0x%x, dirty %d\n", cnt, bufsize, dirty);
+        timediff = ((tv_end.tv_sec * 1000000ULL + tv_end.tv_usec) -
+                (tv_start.tv_sec * 1000000ULL + tv_start.tv_usec));
+
+        printf("Took %d seconds, %d MB/s written\n", timediff / 1000000ULL,
+                (long long)bufsize * (long long)dirty / timediff);
         free(fnameout);
         free(bufin);
         free(bufout);
