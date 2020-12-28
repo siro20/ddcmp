@@ -266,6 +266,7 @@ int main(int argc, char *argv[])
                 }
                 cnt++;
         }
+        fsync(fdout);
         gettimeofday(&tv_end, NULL);
 
         printf("Scanned %d blocks with size 0x%x, dirty %d\n", cnt, bufsize, dirty);
