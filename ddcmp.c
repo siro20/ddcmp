@@ -76,6 +76,7 @@ static int get_proc_cpu_count(void)
                 if (!buf)
                         goto out;
         };
+        buf[filesize] = 0;
         l = buf;
         ret = 0;
         for (;;) {
@@ -117,6 +118,7 @@ static int get_proc_cache_size(void)
                 if (!buf)
                         goto out;
         };
+        buf[filesize] = 0;
         l = strstr(buf, "cache size");
         if (!l)
                 goto out;
