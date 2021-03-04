@@ -43,6 +43,10 @@ static void print_help(char *argv[])
         fprintf(stderr, "\t--help   : Prints help message\n");
         fprintf(stderr, "\t-o       : The file to write to\n");
         fprintf(stderr, "\t--out    : The file to write to\n");
+        fprintf(stderr, "\t--search : Search the string withing the data\n");
+        fprintf(stderr, "\t           To be used with --replace\n");
+        fprintf(stderr, "\t--replace: Replace the string searched for with this\n");
+        fprintf(stderr, "\t           Useful to replace bootloader arguments in the data\n");
         fprintf(stderr, "\t-b       : Block size when operating on files (min 512)\n");
         fprintf(stderr, "\t--block  : Block size when operating on files (min 512)\n");
 
@@ -149,6 +153,9 @@ int main(int argc, char *argv[])
         int dirty;                      /* Dirty blocks # */
         int opt;                        /* getopt return value */
         int option_index;               /* getopt return value */
+        char *search;                   /* The word to search for */
+        int len_search;
+        char *replace;                  /* The word to replace it with */
         struct timeval tv_start;        /* Start timestamp */
         struct timeval tv_end;          /* End timestamp */
         long long timediff;             /* Difference between timestamps */
@@ -167,19 +174,29 @@ int main(int argc, char *argv[])
                 bufsize = ((bufsize + 0x10000 - 1) / 0x10000) * 0x10000;
         }
         fnameout = NULL;
+        replace = NULL;
+        search = NULL;
 
         static struct option long_options[] = {
           /* These options set a flag. */
           {"help", no_argument,       0, 'h'},
           {"out",  required_argument, 0, 'o'},
           {"block",  required_argument, 0, 'b'},
+          {"search",  required_argument, 0, 's'},
+          {"replace",  required_argument, 0, 'r'},
           {0, 0, 0, 0}
         };
 
-        while((opt = getopt_long(argc, argv, "o:b:h", long_options, &option_index)) != -1)
+        while((opt = getopt_long(argc, argv, "r:s:o:b:h", long_options, &option_index)) != -1)
         {
                 switch(opt)
                 {
+                        case 's':
+                                search = strdup(optarg);
+                                break;
+                        case 'r':
+                                replace = strdup(optarg);
+                                break;
                         case 'o':
                                 fnameout = strdup(optarg);
                                 break;
@@ -202,7 +219,20 @@ int main(int argc, char *argv[])
         if (!fnameout) {
                 print_help(argv);
         }
-
+        if (!replace && search) {
+                fprintf(stderr, "Error: Missing argument --replace\n");
+                print_help(argv);
+        }
+        if (replace && !search) {
+                fprintf(stderr, "Error: Missing argument --search\n");
+                print_help(argv);
+        }
+        if (search && (strlen(search) > bufsize)) {
+                fprintf(stderr, "Error: --search bigger than buffer size\n");
+        }
+        if (replace && (strlen(replace) != strlen(search))) {
+                fprintf(stderr, "Error: --replace length must match search length\n");
+        }
         if (posix_memalign((void **)&bufin, 4 * 1024 * 1024, bufsize)) {
                 fprintf(stderr,"Error: Can't allocate buffers: %i\n", bufsize);
                 exit(1);
@@ -231,8 +261,10 @@ int main(int argc, char *argv[])
 
         gettimeofday(&tv_start, NULL);
 
+        printf("searching %s, replacing with %s\n", search, replace);
         cnt = 0;
         dirty = 0;
+        len_search = search != NULL ? strlen(search) : 0;
         while (1) {
                 ret = readfile(fdin, bufin, bufsize);
                 if (ret <= 0)
@@ -245,7 +277,15 @@ int main(int argc, char *argv[])
                 if (ret != bufsize_read) {
                         fprintf(stderr, "Failed to read from output file %s\n", fnameout);
                 }
-
+                if (search) {
+                        for (size_t i = 0; i < bufsize_read - len_search; i++) {
+                                if (memcmp(search, &bufin[i], len_search) == 0) {
+                                        printf("found string '%s' at offset 0x%x, replacing...\n", search, i + cnt * bufsize);
+                                        memcpy(&bufin[i], replace, len_search);
+                                        break;
+                                }
+                        }
+                }
                 if (memcmp(bufin, bufout, ret) != 0) {
                         if (lseek(fdout, -bufsize_read, SEEK_CUR) > -1) {
                                 if (write(fdout, bufin, bufsize_read) != bufsize_read) {
@@ -278,5 +318,7 @@ int main(int argc, char *argv[])
         free(fnameout);
         free(bufin);
         free(bufout);
+        free(search);
+        free(replace);
         exit(0);
 }
