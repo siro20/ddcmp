@@ -280,11 +280,12 @@ int main(int argc, char *argv[])
                         fprintf(stderr, "Failed to read from output file %s\n", fnameout);
                 }
                 if (search) {
+                        /* FIXME: this doesn't work on buffer boundaries */
                         for (size_t i = 0; i < bufsize_read - len_search; i++) {
                                 if (memcmp(search, &bufin[i], len_search) == 0) {
                                         printf("found string '%s' at offset 0x%x, replacing...\n", search, i + cnt * bufsize);
                                         memcpy(&bufin[i], replace, len_search);
-                                        break;
+                                        i += len_search;
                                 }
                         }
                 }
