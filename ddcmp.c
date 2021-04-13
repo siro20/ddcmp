@@ -142,6 +142,20 @@ out:
         return ret;
 }
 
+static void print_bytes(unsigned long long val)
+{
+	static const char *unit[] = {"", "K", "M", "G", "T", "P"};
+	int i;
+
+	for (i = 0; i < sizeof(unit)/sizeof(unit[0]) - 1; i++, val >>= 10) {
+		if (val < (1 << 10)) {
+			printf("%lld %sB", val, unit[i]);
+			return;
+		}
+	}
+	printf("%lld %s", unit[i]);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -316,8 +330,12 @@ int main(int argc, char *argv[])
         timediff = ((tv_end.tv_sec * 1000000ULL + tv_end.tv_usec) -
                 (tv_start.tv_sec * 1000000ULL + tv_start.tv_usec));
 
-        printf("Took %d seconds, %d MB/s written\n", timediff / 1000000ULL,
-                (long long)bufsize * (long long)dirty / timediff);
+        printf("Took %d seconds, ", timediff / 1000000ULL);
+	print_bytes((long long)bufsize * (long long)cnt * 1000000ULL / timediff);
+	printf("/s read, ");
+	print_bytes((long long)bufsize * (long long)dirty * 1000000ULL / timediff);
+	printf("/s written\n");
+
         free(fnameout);
         free(bufin);
         free(bufout);
