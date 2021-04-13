@@ -277,7 +277,9 @@ int main(int argc, char *argv[])
 
         gettimeofday(&tv_start, NULL);
 
-        printf("searching %s, replacing with %s\n", search, replace);
+        if (search && replace)
+                printf("searching %s, replacing with %s\n", search, replace);
+
         cnt = 0;
         dirty = 0;
         len_search = search != NULL ? strlen(search) : 0;
